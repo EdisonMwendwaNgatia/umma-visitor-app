@@ -73,6 +73,7 @@ export default function CheckInScreen() {
   const [visitorType, setVisitorType] = useState<'foot' | 'vehicle'>('foot');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [gender, setGender] = useState<string>('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,7 +83,8 @@ export default function CheckInScreen() {
     refNumber: '',
     residence: '',
     institutionOccupation: '',
-    purposeOfVisit: ''
+    purposeOfVisit: '',
+    // gender is now handled separately as a radio button selection
   });
 
   const handleInputChange = useCallback((field: string, value: string) => {
@@ -104,6 +106,7 @@ export default function CheckInScreen() {
       institutionOccupation: '',
       purposeOfVisit: ''
     });
+    setGender('');
     setVisitorType('foot');
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
@@ -113,6 +116,11 @@ export default function CheckInScreen() {
     if (!formData.visitorName.trim() || !formData.phoneNumber.trim() || !formData.idNumber.trim() || 
         !formData.residence.trim() || !formData.institutionOccupation.trim() || !formData.purposeOfVisit.trim()) {
       Alert.alert('Error', 'Please fill all required fields');
+      return;
+    }
+
+    if (!gender) {
+      Alert.alert('Error', 'Please select gender');
       return;
     }
 
@@ -137,6 +145,7 @@ export default function CheckInScreen() {
         residence: formData.residence.trim(),
         institutionOccupation: formData.institutionOccupation.trim(),
         purposeOfVisit: formData.purposeOfVisit.trim(),
+        gender: gender, // Add gender field
         timeIn: Timestamp.fromDate(new Date()), // Use Firestore Timestamp
         visitorType: visitorType,
         checkedInBy: user.uid,
@@ -164,6 +173,7 @@ export default function CheckInScreen() {
               institutionOccupation: '',
               purposeOfVisit: ''
             });
+            setGender('');
             setVisitorType('foot');
           }
         }
@@ -185,6 +195,10 @@ export default function CheckInScreen() {
         refNumber: ''
       }));
     }
+  }, []);
+
+  const handleGenderSelect = useCallback((selectedGender: string) => {
+    setGender(selectedGender);
   }, []);
 
   return (
@@ -306,6 +320,95 @@ export default function CheckInScreen() {
               placeholder="Enter visitor's full name"
               required
             />
+
+            {/* Gender Selection */}
+            <View style={[
+              styles.inputContainer,
+              isSmallScreen && styles.inputContainerSmall
+            ]}>
+              <Text style={[
+                styles.label,
+                isSmallScreen && styles.labelSmall
+              ]}>
+                Gender <Text style={styles.required}>*</Text>
+              </Text>
+              <View style={styles.genderContainer}>
+                <TouchableOpacity 
+                  style={[
+                    styles.genderOption,
+                    gender === 'Male' && styles.genderOptionSelected,
+                    isSmallScreen && styles.genderOptionSmall
+                  ]}
+                  onPress={() => handleGenderSelect('Male')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.genderIcon,
+                    isSmallScreen && styles.genderIconSmall
+                  ]}>👨</Text>
+                  <Text style={[
+                    styles.genderText,
+                    gender === 'Male' && styles.genderTextSelected,
+                    isSmallScreen && styles.genderTextSmall
+                  ]}>Male</Text>
+                  {gender === 'Male' && (
+                    <View style={styles.genderCheck}>
+                      <Text style={styles.genderCheckIcon}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[
+                    styles.genderOption,
+                    gender === 'Female' && styles.genderOptionSelected,
+                    isSmallScreen && styles.genderOptionSmall
+                  ]}
+                  onPress={() => handleGenderSelect('Female')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.genderIcon,
+                    isSmallScreen && styles.genderIconSmall
+                  ]}>👩</Text>
+                  <Text style={[
+                    styles.genderText,
+                    gender === 'Female' && styles.genderTextSelected,
+                    isSmallScreen && styles.genderTextSmall
+                  ]}>Female</Text>
+                  {gender === 'Female' && (
+                    <View style={styles.genderCheck}>
+                      <Text style={styles.genderCheckIcon}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[
+                    styles.genderOption,
+                    gender === 'Other' && styles.genderOptionSelected,
+                    isSmallScreen && styles.genderOptionSmall
+                  ]}
+                  onPress={() => handleGenderSelect('Other')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.genderIcon,
+                    isSmallScreen && styles.genderIconSmall
+                  ]}>⚧</Text>
+                  <Text style={[
+                    styles.genderText,
+                    gender === 'Other' && styles.genderTextSelected,
+                    isSmallScreen && styles.genderTextSmall
+                  ]}>Other</Text>
+                  {gender === 'Other' && (
+                    <View style={styles.genderCheck}>
+                      <Text style={styles.genderCheckIcon}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <FormInput
               label="Phone Number"
@@ -625,6 +728,67 @@ const styles = StyleSheet.create({
   textAreaSmall: {
     minHeight: 80,
     paddingTop: 12,
+  },
+  // Gender Styles
+  genderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  genderOption: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  genderOptionSmall: {
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  genderOptionSelected: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#10B981',
+    borderWidth: 2,
+  },
+  genderIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  genderIconSmall: {
+    fontSize: 20,
+    marginBottom: 6,
+  },
+  genderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  genderTextSmall: {
+    fontSize: 14,
+  },
+  genderTextSelected: {
+    color: '#059669',
+  },
+  genderCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#10B981',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderCheckIcon: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   signatureSection: {
     marginTop: 8,
