@@ -84,12 +84,32 @@ export default function CheckOutScreen() {
     if (searchQuery.trim() === '') {
       setFilteredVisitors(visitors);
     } else {
-      const filtered = visitors.filter(visitor =>
-        visitor.visitorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        visitor.phoneNumber.includes(searchQuery) ||
-        visitor.idNumber.includes(searchQuery) ||
-        (visitor.refNumber && visitor.refNumber.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+      const lowercasedQuery = searchQuery.toLowerCase();
+      const filtered = visitors.filter(visitor => {
+        // Search by visitor name
+        if (visitor.visitorName?.toLowerCase().includes(lowercasedQuery)) return true;
+        // Search by phone number
+        if (visitor.phoneNumber?.includes(searchQuery)) return true;
+        // Search by ID number
+        if (visitor.idNumber?.includes(searchQuery)) return true;
+        // Search by vehicle plate
+        if (visitor.refNumber?.toLowerCase().includes(lowercasedQuery)) return true;
+        // Search by tag number
+        if (visitor.tagNumber?.toLowerCase().includes(lowercasedQuery)) return true;
+        // Search by tag status
+        if (visitor.tagNotGiven && 'no tag'.includes(lowercasedQuery)) return true;
+        if (!visitor.tagNotGiven && visitor.tagNumber && visitor.tagNumber !== 'N/A' && 'has tag'.includes(lowercasedQuery)) return true;
+        // Search by residence
+        if (visitor.residence?.toLowerCase().includes(lowercasedQuery)) return true;
+        // Search by institution/occupation
+        if (visitor.institutionOccupation?.toLowerCase().includes(lowercasedQuery)) return true;
+        // Search by purpose
+        if (visitor.purposeOfVisit?.toLowerCase().includes(lowercasedQuery)) return true;
+        // Search by gender
+        if (visitor.gender?.toLowerCase().includes(lowercasedQuery)) return true;
+        
+        return false;
+      });
       setFilteredVisitors(filtered);
     }
   }, [searchQuery, visitors]);
@@ -177,115 +197,166 @@ export default function CheckOutScreen() {
     }
   };
 
+  // Helper function to get tag display
+  const getTagDisplay = (tagNumber?: string, tagNotGiven?: boolean) => {
+    if (tagNotGiven) {
+      return { text: 'Not Given', color: '#F59E0B', icon: '❌' };
+    }
+    if (tagNumber && tagNumber !== 'N/A') {
+      return { text: `Tag #${tagNumber}`, color: '#10B981', icon: '🏷️' };
+    }
+    return { text: 'N/A', color: '#6B7280', icon: '📝' };
+  };
+
+  // Helper function to get gender display
+  const getGenderDisplay = (gender?: string) => {
+    if (!gender || gender === 'N/A') {
+      return { text: 'N/A', icon: '❓' };
+    }
+    const lowerGender = gender.toLowerCase();
+    if (lowerGender === 'male') return { text: 'Male', icon: '👨' };
+    if (lowerGender === 'female') return { text: 'Female', icon: '👩' };
+    if (lowerGender === 'other') return { text: 'Other', icon: '⚧' };
+    return { text: gender, icon: '❓' };
+  };
+
   const clearSearch = () => {
     setSearchQuery('');
   };
 
-  const VisitorCard = ({ visitor }: { visitor: Visitor }) => (
-    <View style={[
-      styles.visitorCard,
-      isSmallScreen && styles.visitorCardSmall
-    ]}>
-      {/* Visitor Header */}
-      <View style={styles.visitorHeader}>
-        <View style={styles.nameContainer}>
-          <Text style={[
-            styles.visitorName,
-            isSmallScreen && styles.visitorNameSmall
-          ]}>{visitor.visitorName}</Text>
-          <View style={[
-            styles.typeBadge,
-            visitor.visitorType === 'vehicle' ? styles.vehicleBadge : styles.footBadge
-          ]}>
-            <Text style={styles.typeBadgeText}>
-              {visitor.visitorType === 'vehicle' ? '🚗 Vehicle' : '🚶 Foot'}
-            </Text>
+  const VisitorCard = ({ visitor }: { visitor: Visitor }) => {
+    const tagDisplay = getTagDisplay(visitor.tagNumber, visitor.tagNotGiven);
+    const genderDisplay = getGenderDisplay(visitor.gender);
+    
+    return (
+      <View style={[
+        styles.visitorCard,
+        isSmallScreen && styles.visitorCardSmall
+      ]}>
+        {/* Visitor Header */}
+        <View style={styles.visitorHeader}>
+          <View style={styles.nameContainer}>
+            <Text style={[
+              styles.visitorName,
+              isSmallScreen && styles.visitorNameSmall
+            ]}>{visitor.visitorName}</Text>
+            <View style={styles.typeAndGenderContainer}>
+              <View style={[
+                styles.typeBadge,
+                visitor.visitorType === 'vehicle' ? styles.vehicleBadge : styles.footBadge
+              ]}>
+                <Text style={styles.typeBadgeText}>
+                  {visitor.visitorType === 'vehicle' ? '🚗 Vehicle' : '🚶 Foot'}
+                </Text>
+              </View>
+              <View style={[
+                styles.genderBadge,
+                { backgroundColor: genderDisplay.text === 'Male' ? '#DBEAFE' : 
+                                 genderDisplay.text === 'Female' ? '#FCE7F3' : '#F0F9FF' }
+              ]}>
+                <Text style={styles.genderBadgeText}>
+                  {genderDisplay.icon} {genderDisplay.text}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.timeBadge}>
+            <Text style={styles.timeText}>{safeFormatTime(visitor.timeIn)}</Text>
+            <Text style={styles.dateText}>{safeFormatDate(visitor.timeIn)}</Text>
           </View>
         </View>
-        <View style={styles.timeBadge}>
-          <Text style={styles.timeText}>{safeFormatTime(visitor.timeIn)}</Text>
-          <Text style={styles.dateText}>{safeFormatDate(visitor.timeIn)}</Text>
-        </View>
-      </View>
 
-      {/* Visitor Details */}
-      <View style={styles.visitorDetails}>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>📞</Text>
-          <Text style={[
-            styles.detailText,
-            isSmallScreen && styles.detailTextSmall
-          ]}>{visitor.phoneNumber}</Text>
-        </View>
-        
-        <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>🆔</Text>
-          <Text style={[
-            styles.detailText,
-            isSmallScreen && styles.detailTextSmall
-          ]}>{visitor.idNumber}</Text>
-        </View>
-
-        {visitor.refNumber && (
+        {/* Visitor Details */}
+        <View style={styles.visitorDetails}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>🚙</Text>
+            <Text style={styles.detailIcon}>📞</Text>
             <Text style={[
               styles.detailText,
               isSmallScreen && styles.detailTextSmall
-            ]}>{visitor.refNumber}</Text>
+            ]}>{visitor.phoneNumber}</Text>
           </View>
-        )}
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>🏠</Text>
-          <Text style={[
-            styles.detailText,
-            isSmallScreen && styles.detailTextSmall
-          ]}>{visitor.residence}</Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.detailIcon}>💼</Text>
-          <Text style={[
-            styles.detailText,
-            isSmallScreen && styles.detailTextSmall
-          ]}>{visitor.institutionOccupation}</Text>
-        </View>
-
-        <View style={styles.purposeContainer}>
-          <Text style={styles.detailIcon}>🎯</Text>
-          <Text style={[
-            styles.purposeText,
-            isSmallScreen && styles.purposeTextSmall
-          ]}>{visitor.purposeOfVisit}</Text>
-        </View>
-      </View>
-
-      {/* Check Out Button */}
-      <TouchableOpacity 
-        style={[
-          styles.checkOutButton,
-          checkingOut === visitor.id && styles.checkOutButtonDisabled,
-          isSmallScreen && styles.checkOutButtonSmall
-        ]}
-        onPress={() => handleCheckOut(visitor.id!)}
-        disabled={checkingOut === visitor.id}
-        activeOpacity={0.8}
-      >
-        {checkingOut === visitor.id ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailIcon}>🆔</Text>
             <Text style={[
-              styles.checkOutButtonText,
-              isSmallScreen && styles.checkOutButtonTextSmall
-            ]}>Check Out</Text>
-            <Text style={styles.checkOutButtonIcon}>↩️</Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
+              styles.detailText,
+              isSmallScreen && styles.detailTextSmall
+            ]}>{visitor.idNumber}</Text>
+          </View>
+
+          {visitor.refNumber && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailIcon}>🚙</Text>
+              <Text style={[
+                styles.detailText,
+                isSmallScreen && styles.detailTextSmall
+              ]}>{visitor.refNumber}</Text>
+            </View>
+          )}
+
+          {/* Tag Information */}
+          <View style={styles.detailRow}>
+            <Text style={styles.detailIcon}>{tagDisplay.icon}</Text>
+            <Text style={[
+              styles.detailText,
+              isSmallScreen && styles.detailTextSmall,
+              { color: tagDisplay.color, fontWeight: tagDisplay.text === 'Not Given' ? '600' : '500' }
+            ]}>
+              {tagDisplay.text}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailIcon}>🏠</Text>
+            <Text style={[
+              styles.detailText,
+              isSmallScreen && styles.detailTextSmall
+            ]}>{visitor.residence}</Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailIcon}>💼</Text>
+            <Text style={[
+              styles.detailText,
+              isSmallScreen && styles.detailTextSmall
+            ]}>{visitor.institutionOccupation}</Text>
+          </View>
+
+          <View style={styles.purposeContainer}>
+            <Text style={styles.detailIcon}>🎯</Text>
+            <Text style={[
+              styles.purposeText,
+              isSmallScreen && styles.purposeTextSmall
+            ]}>{visitor.purposeOfVisit}</Text>
+          </View>
+        </View>
+
+        {/* Check Out Button */}
+        <TouchableOpacity 
+          style={[
+            styles.checkOutButton,
+            checkingOut === visitor.id && styles.checkOutButtonDisabled,
+            isSmallScreen && styles.checkOutButtonSmall
+          ]}
+          onPress={() => handleCheckOut(visitor.id!)}
+          disabled={checkingOut === visitor.id}
+          activeOpacity={0.8}
+        >
+          {checkingOut === visitor.id ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Text style={[
+                styles.checkOutButtonText,
+                isSmallScreen && styles.checkOutButtonTextSmall
+              ]}>Check Out</Text>
+              <Text style={styles.checkOutButtonIcon}>↩️</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   if (loading) {
     return (
@@ -345,7 +416,7 @@ export default function CheckOutScreen() {
                 styles.searchInput,
                 isSmallScreen && styles.searchInputSmall
               ]}
-              placeholder="Search visitors..."
+              placeholder="Search by name, phone, ID, tag, residence..."
               placeholderTextColor="#9CA3AF"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -359,6 +430,35 @@ export default function CheckOutScreen() {
             )}
           </View>
         </View>
+
+        {/* Search Hints */}
+        {searchQuery.length > 0 && (
+          <View style={styles.searchHints}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.hintChip}>
+                <Text style={styles.hintChipText}>Name</Text>
+              </View>
+              <View style={styles.hintChip}>
+                <Text style={styles.hintChipText}>Phone</Text>
+              </View>
+              <View style={styles.hintChip}>
+                <Text style={styles.hintChipText}>ID</Text>
+              </View>
+              <View style={styles.hintChip}>
+                <Text style={styles.hintChipText}>Tag #</Text>
+              </View>
+              <View style={styles.hintChip}>
+                <Text style={styles.hintChipText}>Vehicle</Text>
+              </View>
+              <View style={styles.hintChip}>
+                <Text style={styles.hintChipText}>Residence</Text>
+              </View>
+              <View style={styles.hintChip}>
+                <Text style={styles.hintChipText}>Purpose</Text>
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         {/* Stats Card */}
         <View style={[
@@ -386,22 +486,19 @@ export default function CheckOutScreen() {
               isSmallScreen && styles.statLabelSmall
             ]}>Total Active</Text>
           </View>
-          {searchQuery && (
-            <>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[
-                  styles.statValue,
-                  isSmallScreen && styles.statValueSmall,
-                  styles.filteredValue
-                ]}>{filteredVisitors.length}</Text>
-                <Text style={[
-                  styles.statLabel,
-                  isSmallScreen && styles.statLabelSmall
-                ]}>Filtered</Text>
-              </View>
-            </>
-          )}
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[
+              styles.statValue,
+              isSmallScreen && styles.statValueSmall
+            ]}>
+              {visitors.filter(v => v.tagNumber && v.tagNumber !== 'N/A' && !v.tagNotGiven).length}
+            </Text>
+            <Text style={[
+              styles.statLabel,
+              isSmallScreen && styles.statLabelSmall
+            ]}>With Tags</Text>
+          </View>
         </View>
 
         {/* Visitors List */}
@@ -520,7 +617,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   dateCard: {
-    backgroundColor: '#ffffffff',
+    backgroundColor: '#FFFFFF20',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
@@ -530,7 +627,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
-  
+  dateText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   dateTextSmall: {
     fontSize: 12,
   },
@@ -543,7 +644,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -553,7 +654,7 @@ const styles = StyleSheet.create({
   searchCardSmall: {
     borderRadius: 14,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -599,6 +700,21 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '600',
   },
+  searchHints: {
+    marginBottom: 12,
+  },
+  hintChip: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  hintChipText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
   statsCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -623,28 +739,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1F2937',
     marginBottom: 4,
   },
   statValueSmall: {
-    fontSize: 20,
+    fontSize: 18,
   },
   filteredValue: {
     color: '#10B981',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6B7280',
     fontWeight: '500',
+    textAlign: 'center',
   },
   statLabelSmall: {
     fontSize: 10,
   },
   statDivider: {
     width: 1,
-    height: 30,
+    height: 24,
     backgroundColor: '#F3F4F6',
   },
   listContent: {
@@ -684,11 +801,16 @@ const styles = StyleSheet.create({
   visitorNameSmall: {
     fontSize: 18,
   },
+  typeAndGenderContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   typeBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 12,
+    alignSelf: 'flex-start',
   },
   vehicleBadge: {
     backgroundColor: '#DBEAFE',
@@ -696,8 +818,19 @@ const styles = StyleSheet.create({
   footBadge: {
     backgroundColor: '#D1FAE5',
   },
+  genderBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
   typeBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  genderBadgeText: {
+    fontSize: 11,
     fontWeight: '600',
     color: '#374151',
   },
@@ -710,11 +843,7 @@ const styles = StyleSheet.create({
     color: '#10B981',
     marginBottom: 2,
   },
-  dateText: {
-    fontSize: 12,
-    color: '#6c7077ff',
-    fontWeight: '500',
-  },
+
   visitorDetails: {
     marginBottom: 20,
   },
@@ -732,6 +861,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginRight: 8,
     width: 20,
+    textAlign: 'center',
   },
   detailText: {
     fontSize: 14,

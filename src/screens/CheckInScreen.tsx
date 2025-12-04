@@ -28,7 +28,8 @@ const FormInput = React.memo(({
   placeholder, 
   required = false,
   keyboardType = 'default',
-  multiline = false
+  multiline = false,
+  disabled = false
 }: {
   label: string;
   value: string;
@@ -37,6 +38,7 @@ const FormInput = React.memo(({
   required?: boolean;
   keyboardType?: 'default' | 'numeric' | 'phone-pad' | 'email-address';
   multiline?: boolean;
+  disabled?: boolean;
 }) => (
   <View style={[
     styles.inputContainer,
@@ -53,7 +55,8 @@ const FormInput = React.memo(({
         styles.input,
         multiline && styles.textArea,
         isSmallScreen && styles.inputSmall,
-        multiline && isSmallScreen && styles.textAreaSmall
+        multiline && isSmallScreen && styles.textAreaSmall,
+        disabled && styles.inputDisabled
       ]}
       value={value}
       onChangeText={onChange}
@@ -63,8 +66,8 @@ const FormInput = React.memo(({
       multiline={multiline}
       numberOfLines={multiline ? 4 : 1}
       textAlignVertical={multiline ? 'top' : 'center'}
-      editable={true}
-      selectTextOnFocus={false}
+      editable={!disabled}
+      selectTextOnFocus={!disabled}
     />
   </View>
 ));
@@ -74,6 +77,7 @@ export default function CheckInScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [gender, setGender] = useState<string>('');
+  const [tagNotGiven, setTagNotGiven] = useState<boolean>(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -84,6 +88,7 @@ export default function CheckInScreen() {
     residence: '',
     institutionOccupation: '',
     purposeOfVisit: '',
+    tagNumber: '', // Added tag number field
     // gender is now handled separately as a radio button selection
   });
 
@@ -93,6 +98,14 @@ export default function CheckInScreen() {
       [field]: value
     }));
   }, []);
+
+  const handleTagNotGivenToggle = useCallback(() => {
+    setTagNotGiven(prev => !prev);
+    // Clear tag number when checkbox is checked
+    if (!tagNotGiven) {
+      handleInputChange('tagNumber', '');
+    }
+  }, [tagNotGiven, handleInputChange]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -104,10 +117,12 @@ export default function CheckInScreen() {
       refNumber: '',
       residence: '',
       institutionOccupation: '',
-      purposeOfVisit: ''
+      purposeOfVisit: '',
+      tagNumber: ''
     });
     setGender('');
     setVisitorType('foot');
+    setTagNotGiven(false);
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
@@ -126,6 +141,12 @@ export default function CheckInScreen() {
 
     if (visitorType === 'vehicle' && !formData.refNumber.trim()) {
       Alert.alert('Error', 'Vehicle plate number is required');
+      return;
+    }
+
+    // Tag number validation if tag is given
+    if (!tagNotGiven && !formData.tagNumber.trim()) {
+      Alert.alert('Error', 'Please enter tag number or check "Tag Not Given"');
       return;
     }
 
@@ -149,12 +170,20 @@ export default function CheckInScreen() {
         timeIn: Timestamp.fromDate(new Date()), // Use Firestore Timestamp
         visitorType: visitorType,
         checkedInBy: user.uid,
-        isCheckedOut: false
+        isCheckedOut: false,
+        tagNotGiven: tagNotGiven, // Add tag not given flag
       };
 
       // Only include refNumber if it's a vehicle visitor and has a value
       if (visitorType === 'vehicle' && formData.refNumber.trim()) {
         visitorData.refNumber = formData.refNumber.trim();
+      }
+
+      // Only include tagNumber if tag is given
+      if (!tagNotGiven && formData.tagNumber.trim()) {
+        visitorData.tagNumber = formData.tagNumber.trim();
+      } else {
+        visitorData.tagNumber = 'N/A'; // Or you can leave it empty if preferred
       }
 
       await addDoc(collection(db, 'visitors'), visitorData);
@@ -171,10 +200,12 @@ export default function CheckInScreen() {
               refNumber: '',
               residence: '',
               institutionOccupation: '',
-              purposeOfVisit: ''
+              purposeOfVisit: '',
+              tagNumber: ''
             });
             setGender('');
             setVisitorType('foot');
+            setTagNotGiven(false);
           }
         }
       ]);
@@ -453,6 +484,62 @@ export default function CheckInScreen() {
               required
             />
 
+            {/* Tag Number Section */}
+            <View style={[
+              styles.inputContainer,
+              isSmallScreen && styles.inputContainerSmall
+            ]}>
+              <Text style={[
+                styles.label,
+                isSmallScreen && styles.labelSmall
+              ]}>
+                Visitor Tag Number
+              </Text>
+              
+              {/* Tag Not Given Checkbox */}
+              <TouchableOpacity 
+                style={[
+                  styles.checkboxContainer,
+                  isSmallScreen && styles.checkboxContainerSmall
+                ]}
+                onPress={handleTagNotGivenToggle}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.checkbox,
+                  tagNotGiven && styles.checkboxChecked,
+                  isSmallScreen && styles.checkboxSmall
+                ]}>
+                  {tagNotGiven && (
+                    <Text style={styles.checkboxIcon}>✓</Text>
+                  )}
+                </View>
+                <Text style={[
+                  styles.checkboxLabel,
+                  isSmallScreen && styles.checkboxLabelSmall
+                ]}>
+                  Tag not given to visitor
+                </Text>
+              </TouchableOpacity>
+
+              {/* Tag Number Input */}
+              <TextInput
+                style={[
+                  styles.input,
+                  isSmallScreen && styles.inputSmall,
+                  tagNotGiven && styles.inputDisabled,
+                  styles.tagInput
+                ]}
+                value={formData.tagNumber}
+                onChangeText={(text) => handleInputChange('tagNumber', text)}
+                placeholder={tagNotGiven ? "Tag not given" : "Enter visitor tag number"}
+                placeholderTextColor={tagNotGiven ? "#CBD5E1" : "#9CA3AF"}
+                keyboardType="numeric"
+                editable={!tagNotGiven}
+                selectTextOnFocus={!tagNotGiven}
+              />
+            </View>
+
             <View style={[
               styles.inputContainer,
               isSmallScreen && styles.inputContainerSmall
@@ -720,6 +807,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     borderRadius: 10,
   },
+  inputDisabled: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#CBD5E1',
+    color: '#94A3B8',
+  },
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
@@ -728,6 +820,60 @@ const styles = StyleSheet.create({
   textAreaSmall: {
     minHeight: 80,
     paddingTop: 12,
+  },
+  tagInput: {
+    marginTop: 10,
+  },
+  // Checkbox Styles
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  checkboxContainerSmall: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxSmall: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+  },
+  checkboxChecked: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  checkboxIcon: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#374151',
+    flex: 1,
+  },
+  checkboxLabelSmall: {
+    fontSize: 13,
   },
   // Gender Styles
   genderContainer: {
