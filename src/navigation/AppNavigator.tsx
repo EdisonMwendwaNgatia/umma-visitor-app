@@ -11,6 +11,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import CheckInScreen from '../screens/CheckInScreen';
 import CheckOutScreen from '../screens/CheckOutScreen';
 import AlertsScreen from '../screens/AlertsScreen';
+import EditVisitorScreen from '../screens/EditVisitorScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -21,6 +22,7 @@ export type TabParamList = {
   Dashboard: undefined;
   CheckIn: undefined;
   CheckOut: undefined;
+  EditVisitor: undefined;
   Alerts: undefined;
 };
 
@@ -55,6 +57,10 @@ function TabNavigator() {
               iconName = 'log-out-outline';
               break;
 
+            case 'EditVisitor':
+              iconName = 'pencil-outline';
+              break;
+
             case 'Alerts':
               iconName = 'alert-circle-outline';
               break;
@@ -73,11 +79,17 @@ function TabNavigator() {
         component={CheckInScreen}
         options={{ title: 'Check In' }}
       />
+       <Tab.Screen
+        name="EditVisitor"
+        component={EditVisitorScreen}
+        options={{ title: 'Edit Visitor' }}
+      />
       <Tab.Screen
         name="CheckOut"
         component={CheckOutScreen}
         options={{ title: 'Check Out' }}
       />
+     
       <Tab.Screen name="Alerts" component={AlertsScreen} />
       
     </Tab.Navigator>
