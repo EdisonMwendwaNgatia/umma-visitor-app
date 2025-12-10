@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { TabView, SceneMap } from 'react-native-tab-view';
 import { auth } from '../config/firebase';
+import { setupUserPresence, cleanupPresence } from '../services/presenceService';
 
 import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -202,12 +203,20 @@ export default function AppNavigator() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
       setLoading(false);
+      
+      if (user) {
+        // Setup presence when user is logged in
+        setupUserPresence();
+      } else {
+        // Cleanup presence when user is logged out
+        cleanupPresence();
+      }
     });
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
@@ -226,6 +235,7 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

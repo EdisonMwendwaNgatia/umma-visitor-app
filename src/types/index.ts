@@ -23,7 +23,20 @@ export interface Visitor {
 export interface User {
   uid: string;
   email: string;
-  name: string;
-  displayName?: string; // Changed from 'name' to 'displayName' to match usage
-  role?: string; // Added role field
+  displayName?: string;
+  role?: 'user' | 'admin';
+  createdAt?: Date;
+  lastLoginAt?: Date;
+  platform?: 'web' | 'mobile';
+  isOnline?: boolean;
+  lastSeen?: Date | null;
+  deviceInfo?: string;
+}
+
+export interface UserPresence {
+  uid: string;
+  state: 'online' | 'offline' | 'away';
+  lastChanged: Date;
+  platform: string;
+  deviceInfo?: string;
 }

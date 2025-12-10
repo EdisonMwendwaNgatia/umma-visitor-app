@@ -17,6 +17,7 @@ import {
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { setupUserPresence } from '../services/presenceService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isSmallScreen = screenWidth < 375;
@@ -38,12 +39,14 @@ export default function LoginScreen() {
           displayName: user.displayName || '',
           createdAt: new Date(),
           lastLoginAt: new Date(),
-          role: 'user'
+          role: 'user',
+          platform: Platform.OS,
         });
         console.log('New user created in Firestore');
       } else {
         await setDoc(userRef, {
-          lastLoginAt: new Date()
+          lastLoginAt: new Date(),
+          platform: Platform.OS,
         }, { merge: true });
         console.log('User last login updated');
       }
@@ -64,6 +67,10 @@ export default function LoginScreen() {
       const user = userCredential.user;
       
       await createUserInFirestore(user);
+      
+      // Setup user presence tracking
+      setupUserPresence();
+      
       console.log('Login successful for:', user.email);
       
     } catch (error: any) {
@@ -253,7 +260,6 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

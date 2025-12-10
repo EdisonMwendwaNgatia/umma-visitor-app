@@ -13,6 +13,7 @@ import { auth, db } from '../config/firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query, onSnapshot, Timestamp } from 'firebase/firestore';
 import { Visitor } from '../types';
+import { cleanupPresence, updateLastActive } from '../services/presenceService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isSmallScreen = screenWidth < 375;
@@ -31,6 +32,9 @@ export default function DashboardScreen() {
 
   const handleSignOut = async () => {
     try {
+      // Clean up presence before signing out
+      await cleanupPresence();
+      
       await signOut(auth);
       console.log('User signed out successfully');
       // Navigation to login will be handled automatically by your navigation stack
@@ -77,7 +81,16 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     const unsubscribe = fetchData();
-    return unsubscribe;
+    
+    // Set up activity tracking to update last active
+    const activityInterval = setInterval(() => {
+      updateLastActive();
+    }, 30000); // Update every 30 seconds
+    
+    return () => {
+      unsubscribe();
+      clearInterval(activityInterval);
+    };
   }, []);
 
   const onRefresh = () => {
